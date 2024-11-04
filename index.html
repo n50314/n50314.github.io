@@ -206,52 +206,38 @@
             const urlParams = new URLSearchParams(window.location.search);
             let uploadUrl = urlParams.get('uploadUrl');
 
-            // URL 解碼
+            console.log("原始上傳URL:", uploadUrl);
+
             try {
+                // 解碼 URL
                 uploadUrl = decodeURIComponent(uploadUrl);
+                console.log("解碼後的上傳URL:", uploadUrl);
             } catch (e) {
-                console.error("URL 解碼失敗:", e);
-            }
-
-            console.log("解碼後的上傳URL:", uploadUrl);
-
-            if (!uploadUrl) {
-                console.error("未獲取到上傳網址");
-                setStatus("錯誤：未獲取到上傳網址", "red");
-                alert('未獲取到上傳網址');
+                console.error("URL解碼失敗:", e);
                 return;
             }
 
-            if (!currentBase64) {
-                setStatus("請先選擇圖片", "red");
-                alert('請先選擇圖片');
+            if (!uploadUrl || !currentBase64) {
+                alert('缺少上傳URL或圖片');
                 return;
             }
 
-            console.log("準備上傳到:", uploadUrl);
+            console.log("準備上傳...");
+            console.log("Base64長度:", currentBase64.length);
             setStatus("正在上傳...");
 
-            // 顯示載入動畫
             document.getElementById('loading').style.display = 'block';
-
-            // 禁用按鈕
             document.getElementById('uploadBtn').disabled = true;
-            document.getElementById('fileInput').disabled = true;
-
-            const imageData = atob(currentBase64);
-            const bytes = new Uint8Array(imageData.length);
-            for (let i = 0; i < imageData.length; i++) {
-                bytes[i] = imageData.charCodeAt(i);
-            }
 
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', uploadUrl, true);
+            // 修改 Content-Type
             xhr.setRequestHeader('Content-Type', 'image/jpeg');
-            // 移除其他額外的 headers
 
             xhr.onload = function () {
-                console.log("收到響應狀態:", xhr.status);
-                console.log("響應文本:", xhr.responseText);
+                console.log("上傳響應狀態:", xhr.status);
+                console.log("響應頭:", xhr.getAllResponseHeaders());
+                console.log("響應內容:", xhr.responseText);
 
                 if (xhr.status >= 200 && xhr.status < 300) {
                     setStatus("上傳成功！", "green");
@@ -259,34 +245,36 @@
                     setTimeout(() => window.close(), 1000);
                 } else {
                     setStatus("上傳失敗：" + xhr.status, "red");
-                    alert('上傳失敗：' + xhr.status + '\n' + xhr.responseText);
+                    alert('上傳失敗：' + xhr.status);
                 }
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
-                document.getElementById('fileInput').disabled = false;
             };
 
             xhr.onerror = function (e) {
                 console.error("上傳錯誤:", e);
-                console.error("錯誤狀態:", xhr.status);
-                console.error("錯誤響應:", xhr.responseText);
                 setStatus("上傳失敗", "red");
-                alert('上傳失敗: ' + xhr.status);
+                alert('上傳失敗');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
-                document.getElementById('fileInput').disabled = false;
             };
 
             try {
+                // 將 base64 轉換為二進制
+                const binary = atob(currentBase64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+
+                console.log("準備發送數據，大小:", bytes.length, "bytes");
                 xhr.send(bytes);
-                console.log("請求已發送");
             } catch (e) {
-                console.error("發送請求失敗:", e);
-                setStatus("發送請求失敗", "red");
-                alert('發送請求失敗: ' + e.message);
+                console.error("發送失敗:", e);
+                setStatus("發送失敗", "red");
+                alert('發送失敗');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
-                document.getElementById('fileInput').disabled = false;
             }
         }
     </script>
