@@ -178,6 +178,8 @@
 
                 let reader = new FileReader();
                 reader.onload = function (e) {
+                    currentBase64 = e.target.result.split(',')[1];
+                    console.log("Base64 前20個字符:", currentBase64.substring(0, 20));
                     document.getElementById('previewImage').src = e.target.result;
                     document.getElementById('previewImage').style.display = 'block';
                     document.getElementById('previewText').style.display = 'none';
@@ -203,20 +205,10 @@
         };
 
         function uploadImage() {
+            
             const urlParams = new URLSearchParams(window.location.search);
             let uploadUrl = urlParams.get('uploadUrl');
-
-            console.log("原始上傳URL:", uploadUrl);
-
-            try {
-                // 解碼 URL
-                uploadUrl = decodeURIComponent(uploadUrl);
-                console.log("解碼後的上傳URL:", uploadUrl);
-            } catch (e) {
-                console.error("URL解碼失敗:", e);
-                return;
-            }
-
+            console.log("上傳 URL:", uploadUrl);
             if (!uploadUrl || !currentBase64) {
                 alert('缺少上傳URL或圖片');
                 return;
@@ -224,28 +216,25 @@
 
             console.log("準備上傳...");
             console.log("Base64長度:", currentBase64.length);
-            setStatus("正在上傳...");
 
             document.getElementById('loading').style.display = 'block';
             document.getElementById('uploadBtn').disabled = true;
 
             const xhr = new XMLHttpRequest();
-            xhr.open('PUT', uploadUrl, true);
-            // 修改 Content-Type
-            xhr.setRequestHeader('Content-Type', 'image/jpeg');
+            xhr.open('PUT', uploadUrl);
+
+            // 不設置 Content-Type，讓瀏覽器自己處理
+            // xhr.setRequestHeader('Content-Type', 'application/json');
 
             xhr.onload = function () {
-                console.log("上傳響應狀態:", xhr.status);
-                console.log("響應頭:", xhr.getAllResponseHeaders());
-                console.log("響應內容:", xhr.responseText);
+                console.log("上傳完成，狀態:", xhr.status);
+                console.log("響應:", xhr.responseText);
 
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    setStatus("上傳成功！", "green");
                     alert('上傳成功！');
-                    setTimeout(() => window.close(), 1000);
+                    window.close();
                 } else {
-                    setStatus("上傳失敗：" + xhr.status, "red");
-                    alert('上傳失敗：' + xhr.status);
+                    alert('上傳失敗: ' + xhr.status);
                 }
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
@@ -253,25 +242,18 @@
 
             xhr.onerror = function (e) {
                 console.error("上傳錯誤:", e);
-                setStatus("上傳失敗", "red");
                 alert('上傳失敗');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
             };
 
             try {
-                // 將 base64 轉換為二進制
-                const binary = atob(currentBase64);
-                const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) {
-                    bytes[i] = binary.charCodeAt(i);
-                }
-
-                console.log("準備發送數據，大小:", bytes.length, "bytes");
-                xhr.send(bytes);
+                // 直接發送 base64 字串
+                console.log("準備發送數據...");
+                xhr.send(currentBase64);
+                console.log("數據已發送");
             } catch (e) {
                 console.error("發送失敗:", e);
-                setStatus("發送失敗", "red");
                 alert('發送失敗');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
