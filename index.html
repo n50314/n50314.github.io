@@ -1,265 +1,205 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>圖片上傳</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
             font-family: Arial, sans-serif;
-            padding: 16px;
-            background: #f5f5f5;
-            max-width: 600px;
-            margin: 0 auto;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
         }
-
+        .upload-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
         .preview-area {
             width: 100%;
-            height: 300px;
+            height: 200px;
             border: 2px dashed #ccc;
-            border-radius: 8px;
-            margin: 16px 0;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
+            margin-bottom: 20px;
             cursor: pointer;
-            background: white;
+            position: relative;
             overflow: hidden;
         }
-
-        #previewImage {
+        .preview-area img {
             max-width: 100%;
             max-height: 100%;
-            display: none;
             object-fit: contain;
         }
-
-        .file-info {
-            text-align: center;
-            color: #666;
-            margin: 10px 0;
-        }
-
         .buttons {
-            text-align: center;
+            display: flex;
+            gap: 10px;
             margin-top: 20px;
         }
-
-        .btn {
+        button {
             padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
             border: none;
             border-radius: 4px;
-            font-size: 16px;
             cursor: pointer;
-            margin: 0 8px;
-            color: white;
-            min-width: 120px;
+            flex: 1;
         }
-
-        .select-btn {
-            background: #4CAF50;
-        }
-
-        .upload-btn {
-            background: #2196F3;
-        }
-
-        .upload-btn:disabled {
-            background: #ccc;
+        button:disabled {
+            background-color: #cccccc;
             cursor: not-allowed;
         }
-
         #status {
             margin-top: 10px;
-            text-align: center;
-            color: #666;
+            padding: 10px;
+            border-radius: 4px;
         }
-
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
         .loading {
             display: none;
-            margin: 10px auto;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .loading:after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-
 <body>
-    <div class="preview-area" onclick="document.getElementById('fileInput').click()">
-        <img id="previewImage">
-        <div id="previewText">點擊選擇圖片</div>
-    </div>
-
-    <div id="fileInfo" class="file-info"></div>
-
-    <div id="loading" class="loading"></div>
-
-    <div id="status"></div>
-
-    <div class="buttons">
+    <div class="upload-container">
+        <div class="preview-area" id="previewArea" onclick="document.getElementById('fileInput').click()">
+            <div id="previewText">點擊選擇圖片</div>
+        </div>
+        
         <input type="file" id="fileInput" accept="image/*" style="display: none">
-        <button class="btn select-btn" onclick="document.getElementById('fileInput').click()">
-            選擇圖片
-        </button>
-        <button id="uploadBtn" class="btn upload-btn" onclick="uploadImage()" disabled>
-            上傳圖片
-        </button>
+        
+        <div id="fileInfo"></div>
+        <div id="loading" class="loading"></div>
+        <div id="status"></div>
+        
+        <div class="buttons">
+            <button onclick="document.getElementById('fileInput').click()">選擇圖片</button>
+            <button id="uploadBtn" onclick="uploadImage()" disabled>上傳圖片</button>
+        </div>
     </div>
 
     <script>
-        // 頁面載入時檢查 URL 參數
-        window.onload = function () {
+        let imageBase64 = null;
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const previewArea = document.getElementById('previewArea');
+        const previewText = document.getElementById('previewText');
+        const fileInfo = document.getElementById('fileInfo');
+        const loading = document.getElementById('loading');
+        const status = document.getElementById('status');
+
+        function getUploadUrl() {
             const urlParams = new URLSearchParams(window.location.search);
-            const uploadUrl = urlParams.get('uploadUrl');
-
-            console.log("頁面加載完成");
-            console.log("當前URL:", window.location.href);
-            console.log("上傳URL:", uploadUrl);
-
-            // 驗證 URL
-            try {
-                if (uploadUrl) {
-                    new URL(uploadUrl);
-                    console.log("URL 格式有效");
-                } else {
-                    console.warn("未提供上傳 URL");
-                }
-            } catch (e) {
-                console.error("無效的 URL:", e);
-            }
-        };
-
-        // 全局錯誤處理
-        window.onerror = function (msg, url, line, col, error) {
-            console.error("全局錯誤:", {
-                message: msg,
-                url: url,
-                line: line,
-                column: col,
-                error: error
-            });
-            return false;
-        };
-
-        let currentBase64 = null;
-
-        function setStatus(message, color = '#666') {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.style.color = color;
+            return decodeURIComponent(urlParams.get('uploadUrl'));
         }
 
-        document.getElementById('fileInput').onchange = function (e) {
-            let file = e.target.files[0];
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
             if (file) {
-                console.log("選擇的檔案:", file.name, "大小:", file.size);
-                setStatus("正在讀取圖片...");
-
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    currentBase64 = e.target.result.split(',')[1];
-                    console.log("Base64 前20個字符:", currentBase64.substring(0, 20));
-                    document.getElementById('previewImage').src = e.target.result;
-                    document.getElementById('previewImage').style.display = 'block';
-                    document.getElementById('previewText').style.display = 'none';
-
-                    currentBase64 = e.target.result.split(',')[1];
-                    console.log("Base64 轉換完成，長度:", currentBase64.length);
-
-                    document.getElementById('fileInfo').textContent =
-                        '檔案大小: ' + (file.size / 1024).toFixed(2) + ' KB';
-
-                    document.getElementById('uploadBtn').disabled = false;
-                    setStatus("圖片已準備好，可以上傳");
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // 清除之前的預覽
+                    while (previewArea.firstChild) {
+                        previewArea.removeChild(previewArea.firstChild);
+                    }
+                    
+                    // 創建並添加新的預覽圖片
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    previewArea.appendChild(img);
+                    
+                    imageBase64 = e.target.result.split(',')[1];
+                    fileInfo.textContent = `檔案名稱: ${file.name}, 大小: ${(file.size / 1024).toFixed(2)}KB`;
+                    uploadBtn.disabled = false;
                 };
-
-                reader.onerror = function (error) {
-                    console.error("讀取檔案錯誤:", error);
-                    setStatus("讀取檔案失敗", "red");
-                    alert('讀取檔案失敗');
-                };
-
                 reader.readAsDataURL(file);
             }
-        };
+        });
 
-        function uploadImage() {
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            let uploadUrl = urlParams.get('uploadUrl');
-            console.log("上傳 URL:", uploadUrl);
-            if (!uploadUrl || !currentBase64) {
-                alert('缺少上傳URL或圖片');
+        async function uploadImage() {
+            if (!imageBase64) {
+                setStatus('請先選擇圖片', 'error');
                 return;
             }
 
-            console.log("準備上傳...");
-            console.log("Base64長度:", currentBase64.length);
+            const uploadUrl = getUploadUrl();
+            if (!uploadUrl) {
+                setStatus('無效的上傳URL', 'error');
+                return;
+            }
 
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('uploadBtn').disabled = true;
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('PUT', uploadUrl);
-
-            // 不設置 Content-Type，讓瀏覽器自己處理
-            // xhr.setRequestHeader('Content-Type', 'application/json');
-
-            xhr.onload = function () {
-                console.log("上傳完成，狀態:", xhr.status);
-                console.log("響應:", xhr.responseText);
-
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    alert('上傳成功！');
-                    window.close();
-                } else {
-                    alert('上傳失敗: ' + xhr.status);
-                }
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('uploadBtn').disabled = false;
-            };
-
-            xhr.onerror = function (e) {
-                console.error("上傳錯誤:", e);
-                alert('上傳失敗');
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('uploadBtn').disabled = false;
-            };
+            setStatus('準備上傳...', '');
+            loading.style.display = 'block';
+            uploadBtn.disabled = true;
 
             try {
-                // 直接發送 base64 字串
-                console.log("準備發送數據...");
-                xhr.send(currentBase64);
-                console.log("數據已發送");
-            } catch (e) {
-                console.error("發送失敗:", e);
-                alert('發送失敗');
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('uploadBtn').disabled = false;
+                const binaryString = atob(imageBase64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                const response = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: bytes,
+                    headers: {
+                        'Content-Type': 'image/jpeg',
+                        'x-amz-acl': 'public-read'
+                    }
+                });
+
+                if (response.ok) {
+                    setStatus('上傳成功！', 'success');
+                    // 等待2秒後關閉視窗
+                    setTimeout(() => {
+                        window.close();
+                    }, 2000);
+                } else {
+                    throw new Error(`Upload failed with status: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('上傳錯誤:', error);
+                setStatus('上傳失敗: ' + error.message, 'error');
+            } finally {
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
             }
+        }
+
+        function setStatus(message, type) {
+            status.textContent = message;
+            status.className = type;
         }
     </script>
 </body>
-
 </html>
