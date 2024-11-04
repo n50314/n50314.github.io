@@ -123,18 +123,38 @@
     <script>
         // 頁面載入時檢查 URL 參數
         window.onload = function() {
-            // 獲取 URL 參數
             const urlParams = new URLSearchParams(window.location.search);
             const uploadUrl = urlParams.get('uploadUrl');
             
-            console.log("收到的上傳URL:", uploadUrl);
+            console.log("頁面加載完成");
+            console.log("當前URL:", window.location.href);
+            console.log("上傳URL:", uploadUrl);
             
-            if (!uploadUrl) {
-                setStatus("警告：未收到上傳 URL", "red");
-                console.warn("未收到上傳 URL");
+            // 驗證 URL
+            try {
+                if (uploadUrl) {
+                    new URL(uploadUrl);
+                    console.log("URL 格式有效");
+                } else {
+                    console.warn("未提供上傳 URL");
+                }
+            } catch (e) {
+                console.error("無效的 URL:", e);
             }
         };
-
+     
+        // 全局錯誤處理
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("全局錯誤:", {
+                message: msg,
+                url: url,
+                line: line,
+                column: col,
+                error: error
+            });
+            return false;
+        };
+     
         let currentBase64 = null;
         
         function setStatus(message, color = '#666') {
@@ -176,119 +196,88 @@
         };
         
         function uploadImage() {
-        // 獲取上傳 URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const uploadUrl = urlParams.get('uploadUrl');
-        
-        if (!uploadUrl) {
-            console.error("未獲取到上傳網址");
-            setStatus("錯誤：未獲取到上傳網址", "red");
-            alert('未獲取到上傳網址');
-            return;
-        }
-        
-        if (!currentBase64) {
-            setStatus("請先選擇圖片", "red");
-            alert('請先選擇圖片');
-            return;
-        }
-
-        console.log("準備上傳到:", uploadUrl);
-        setStatus("正在上傳...");
-
-        // 顯示載入動畫
-        document.getElementById('loading').style.display = 'block';
-        
-        // 禁用按鈕
-        document.getElementById('uploadBtn').disabled = true;
-        document.getElementById('fileInput').disabled = true;
-
-        const imageData = atob(currentBase64);
-        const bytes = new Uint8Array(imageData.length);
-        for (let i = 0; i < imageData.length; i++) {
-            bytes[i] = imageData.charCodeAt(i);
-        }
-
-        fetch(uploadUrl, {
-            method: 'PUT',
-            body: bytes,
-            headers: {
-                'Content-Type': 'image/jpeg',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'PUT',
-                'Cache-Control': 'no-cache'
-            },
-            mode: 'cors'  // 添加這個
-        })
-        .then(response => {
-            console.log("上傳響應狀態:", response.status);
-            console.log("響應頭:", response.headers);
+            // 獲取上傳 URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const uploadUrl = urlParams.get('uploadUrl');
             
-            if (response.ok || response.status === 200) {
-                setStatus("上傳成功！", "green");
-                alert('上傳成功！');
-                // 延遲關閉以確保訊息顯示
-                setTimeout(() => {
-                    window.close();
-                }, 1000);
-                return response.text();  // 嘗試讀取響應內容
-            } else {
-                return response.text().then(text => {
-                    throw new Error(`狀態碼: ${response.status}, 響應: ${text}`);
-                });
+            if (!uploadUrl) {
+                console.error("未獲取到上傳網址");
+                setStatus("錯誤：未獲取到上傳網址", "red");
+                alert('未獲取到上傳網址');
+                return;
             }
-        })
-        .then(text => {
-            console.log("響應內容:", text);
-        })
-        .catch(error => {
-            console.error("上傳錯誤:", error);
-            console.error("錯誤詳情:", error.stack);
-            setStatus("上傳失敗：" + error.message, "red");
-            alert('上傳失敗：' + error.message);
-        })
-        .finally(() => {
-            // 隱藏載入動畫
-            document.getElementById('loading').style.display = 'none';
-            // 恢復按鈕
-            document.getElementById('uploadBtn').disabled = false;
-            document.getElementById('fileInput').disabled = false;
-        });
-    }
-
-    // 添加調試信息
-    window.onerror = function(msg, url, line, col, error) {
-        console.error("全局錯誤:", {
-            message: msg,
-            url: url,
-            line: line,
-            column: col,
-            error: error
-        });
-        return false;
-    };
-
-    // 在頁面加載完成時輸出更多信息
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const uploadUrl = urlParams.get('uploadUrl');
-        
-        console.log("頁面加載完成");
-        console.log("當前URL:", window.location.href);
-        console.log("上傳URL:", uploadUrl);
-        
-        // 驗證 URL
-        try {
-            if (uploadUrl) {
-                new URL(uploadUrl);
-                console.log("URL 格式有效");
-            } else {
-                console.warn("未提供上傳 URL");
+            
+            if (!currentBase64) {
+                setStatus("請先選擇圖片", "red");
+                alert('請先選擇圖片');
+                return;
             }
-        } catch (e) {
-            console.error("無效的 URL:", e);
+     
+            console.log("準備上傳到:", uploadUrl);
+            setStatus("正在上傳...");
+     
+            // 顯示載入動畫
+            document.getElementById('loading').style.display = 'block';
+            
+            // 禁用按鈕
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('fileInput').disabled = true;
+     
+            const imageData = atob(currentBase64);
+            const bytes = new Uint8Array(imageData.length);
+            for (let i = 0; i < imageData.length; i++) {
+                bytes[i] = imageData.charCodeAt(i);
+            }
+     
+            // 使用 XMLHttpRequest
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', uploadUrl, true);
+            xhr.setRequestHeader('Content-Type', 'image/jpeg');
+     
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    console.log("上傳成功");
+                    setStatus("上傳成功！", "green");
+                    alert('上傳成功！');
+                    setTimeout(() => window.close(), 1000);
+                } else {
+                    console.error("上傳失敗，狀態碼:", xhr.status);
+                    setStatus("上傳失敗：" + xhr.status, "red");
+                    alert('上傳失敗：' + xhr.status);
+                }
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('uploadBtn').disabled = false;
+                document.getElementById('fileInput').disabled = false;
+            };
+     
+            xhr.onerror = function(e) {
+                console.error("上傳錯誤:", e);
+                setStatus("上傳失敗", "red");
+                alert('上傳失敗');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('uploadBtn').disabled = false;
+                document.getElementById('fileInput').disabled = false;
+            };
+     
+            // 添加上傳進度顯示
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    setStatus(`上傳進度: ${percentComplete.toFixed(2)}%`);
+                }
+            };
+     
+            try {
+                xhr.send(bytes);
+            } catch (e) {
+                console.error("發送請求失敗:", e);
+                setStatus("發送請求失敗", "red");
+                alert('發送請求失敗');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('uploadBtn').disabled = false;
+                document.getElementById('fileInput').disabled = false;
+            }
         }
-    };
-    </script>
+     </script>
 </body>
 </html>
