@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +11,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: Arial, sans-serif;
             padding: 16px;
@@ -18,7 +19,7 @@
             max-width: 600px;
             margin: 0 auto;
         }
-        
+
         .preview-area {
             width: 100%;
             height: 300px;
@@ -32,25 +33,25 @@
             background: white;
             overflow: hidden;
         }
-        
+
         #previewImage {
             max-width: 100%;
             max-height: 100%;
             display: none;
             object-fit: contain;
         }
-        
+
         .file-info {
             text-align: center;
             color: #666;
             margin: 10px 0;
         }
-        
+
         .buttons {
             text-align: center;
             margin-top: 20px;
         }
-        
+
         .btn {
             padding: 10px 20px;
             border: none;
@@ -61,15 +62,15 @@
             color: white;
             min-width: 120px;
         }
-        
+
         .select-btn {
             background: #4CAF50;
         }
-        
+
         .upload-btn {
             background: #2196F3;
         }
-        
+
         .upload-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
@@ -93,23 +94,29 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="preview-area" onclick="document.getElementById('fileInput').click()">
         <img id="previewImage">
         <div id="previewText">點擊選擇圖片</div>
     </div>
-    
+
     <div id="fileInfo" class="file-info"></div>
-    
+
     <div id="loading" class="loading"></div>
-    
+
     <div id="status"></div>
-    
+
     <div class="buttons">
         <input type="file" id="fileInput" accept="image/*" style="display: none">
         <button class="btn select-btn" onclick="document.getElementById('fileInput').click()">
@@ -122,14 +129,14 @@
 
     <script>
         // 頁面載入時檢查 URL 參數
-        window.onload = function() {
+        window.onload = function () {
             const urlParams = new URLSearchParams(window.location.search);
             const uploadUrl = urlParams.get('uploadUrl');
-            
+
             console.log("頁面加載完成");
             console.log("當前URL:", window.location.href);
             console.log("上傳URL:", uploadUrl);
-            
+
             // 驗證 URL
             try {
                 if (uploadUrl) {
@@ -142,9 +149,9 @@
                 console.error("無效的 URL:", e);
             }
         };
-     
+
         // 全局錯誤處理
-        window.onerror = function(msg, url, line, col, error) {
+        window.onerror = function (msg, url, line, col, error) {
             console.error("全局錯誤:", {
                 message: msg,
                 url: url,
@@ -154,130 +161,135 @@
             });
             return false;
         };
-     
+
         let currentBase64 = null;
-        
+
         function setStatus(message, color = '#666') {
             const status = document.getElementById('status');
             status.textContent = message;
             status.style.color = color;
         }
-        
-        document.getElementById('fileInput').onchange = function(e) {
+
+        document.getElementById('fileInput').onchange = function (e) {
             let file = e.target.files[0];
             if (file) {
                 console.log("選擇的檔案:", file.name, "大小:", file.size);
                 setStatus("正在讀取圖片...");
-                
+
                 let reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     document.getElementById('previewImage').src = e.target.result;
                     document.getElementById('previewImage').style.display = 'block';
                     document.getElementById('previewText').style.display = 'none';
-                    
+
                     currentBase64 = e.target.result.split(',')[1];
                     console.log("Base64 轉換完成，長度:", currentBase64.length);
-                    
-                    document.getElementById('fileInfo').textContent = 
+
+                    document.getElementById('fileInfo').textContent =
                         '檔案大小: ' + (file.size / 1024).toFixed(2) + ' KB';
-                    
+
                     document.getElementById('uploadBtn').disabled = false;
                     setStatus("圖片已準備好，可以上傳");
                 };
-                
-                reader.onerror = function(error) {
+
+                reader.onerror = function (error) {
                     console.error("讀取檔案錯誤:", error);
                     setStatus("讀取檔案失敗", "red");
                     alert('讀取檔案失敗');
                 };
-                
+
                 reader.readAsDataURL(file);
             }
         };
-        
+
         function uploadImage() {
-            // 獲取上傳 URL
             const urlParams = new URLSearchParams(window.location.search);
-            const uploadUrl = urlParams.get('uploadUrl');
-            
+            let uploadUrl = urlParams.get('uploadUrl');
+
+            // URL 解碼
+            try {
+                uploadUrl = decodeURIComponent(uploadUrl);
+            } catch (e) {
+                console.error("URL 解碼失敗:", e);
+            }
+
+            console.log("解碼後的上傳URL:", uploadUrl);
+
             if (!uploadUrl) {
                 console.error("未獲取到上傳網址");
                 setStatus("錯誤：未獲取到上傳網址", "red");
                 alert('未獲取到上傳網址');
                 return;
             }
-            
+
             if (!currentBase64) {
                 setStatus("請先選擇圖片", "red");
                 alert('請先選擇圖片');
                 return;
             }
-     
+
             console.log("準備上傳到:", uploadUrl);
             setStatus("正在上傳...");
-     
+
             // 顯示載入動畫
             document.getElementById('loading').style.display = 'block';
-            
+
             // 禁用按鈕
             document.getElementById('uploadBtn').disabled = true;
             document.getElementById('fileInput').disabled = true;
-     
+
             const imageData = atob(currentBase64);
             const bytes = new Uint8Array(imageData.length);
             for (let i = 0; i < imageData.length; i++) {
                 bytes[i] = imageData.charCodeAt(i);
             }
-     
-            // 使用 XMLHttpRequest
+
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', uploadUrl, true);
             xhr.setRequestHeader('Content-Type', 'image/jpeg');
-     
-            xhr.onload = function() {
+            // 移除其他額外的 headers
+
+            xhr.onload = function () {
+                console.log("收到響應狀態:", xhr.status);
+                console.log("響應文本:", xhr.responseText);
+
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    console.log("上傳成功");
                     setStatus("上傳成功！", "green");
                     alert('上傳成功！');
                     setTimeout(() => window.close(), 1000);
                 } else {
-                    console.error("上傳失敗，狀態碼:", xhr.status);
                     setStatus("上傳失敗：" + xhr.status, "red");
-                    alert('上傳失敗：' + xhr.status);
+                    alert('上傳失敗：' + xhr.status + '\n' + xhr.responseText);
                 }
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
                 document.getElementById('fileInput').disabled = false;
             };
-     
-            xhr.onerror = function(e) {
+
+            xhr.onerror = function (e) {
                 console.error("上傳錯誤:", e);
+                console.error("錯誤狀態:", xhr.status);
+                console.error("錯誤響應:", xhr.responseText);
                 setStatus("上傳失敗", "red");
-                alert('上傳失敗');
+                alert('上傳失敗: ' + xhr.status);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
                 document.getElementById('fileInput').disabled = false;
             };
-     
-            // 添加上傳進度顯示
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    setStatus(`上傳進度: ${percentComplete.toFixed(2)}%`);
-                }
-            };
-     
+
             try {
                 xhr.send(bytes);
+                console.log("請求已發送");
             } catch (e) {
                 console.error("發送請求失敗:", e);
                 setStatus("發送請求失敗", "red");
-                alert('發送請求失敗');
+                alert('發送請求失敗: ' + e.message);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
                 document.getElementById('fileInput').disabled = false;
             }
         }
-     </script>
+    </script>
 </body>
+
 </html>
