@@ -185,66 +185,56 @@
         });
 
         async function uploadImage() {
-            // 1. 驗證資料
-            if (!imageBase64) {
-                setStatus('請先選擇圖片', 'error');
-                return;
-            }
+    try {
+        setStatus('準備上傳...', '');
+        loading.style.display = 'block';
+        uploadBtn.disabled = true;
 
-            const uploadUrl = getUploadUrl();
-            if (!uploadUrl) {
-                setStatus('無效的上傳 URL', 'error');
-                return;
-            }
+        // 取得並解析上傳 URL
+        const uploadUrl = decodeURIComponent(getUploadUrl());
+        console.log("解析後的上傳 URL:", uploadUrl);
 
-            // 2. 準備上傳
-            try {
-                setStatus('準備上傳...', '');
-                loading.style.display = 'block';
-                uploadBtn.disabled = true;
-
-                // 3. 轉換 base64 為二進制
-                const binaryString = atob(imageBase64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // 4. 執行上傳
-                const response = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/octet-stream'
-                    },
-                    body: bytes
-                });
-
-                // 5. 處理回應
-                if (response.ok) {
-                    setStatus('上傳成功！', 'success');
-
-                    // 等待一下再關閉頁面，讓用戶看到成功訊息
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-
-                    // 確保所有操作都完成後才關閉
-                    if (window.opener) {
-                        // 如果是由其他頁面打開的，通知父頁面
-                        window.opener.postMessage('upload_complete', '*');
-                    }
-                    window.close();
-                } else {
-                    throw new Error(`上傳失敗: ${response.status} ${response.statusText}`);
-                }
-
-            } catch (error) {
-                console.error('上傳過程發生錯誤:', error);
-                setStatus(`上傳失敗: ${error.message}`, 'error');
-            } finally {
-                // 6. 清理工作
-                loading.style.display = 'none';
-                uploadBtn.disabled = false;
-            }
+        // 轉換 base64 為 Blob
+        const byteCharacters = atob(imageBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+        // 使用 FormData
+        const formData = new FormData();
+        formData.append('file', blob, 'image.jpg');
+
+        // 發送請求
+        const response = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: blob,
+            headers: {
+                'Content-Type': 'image/jpeg',
+                'Cache-Control': 'no-cache',
+            },
+            mode: 'cors',  // 明確指定 CORS 模式
+            credentials: 'omit'  // 不發送認證信息
+        });
+
+        if (response.ok) {
+            console.log('上傳成功');
+            setStatus('上傳成功！', 'success');
+            setTimeout(() => window.close(), 1000);
+        } else {
+            throw new Error(`上傳失敗: ${response.status} ${response.statusText}`);
+        }
+
+    } catch (error) {
+        console.error('上傳錯誤:', error);
+        setStatus('上傳失敗: ' + error.message, 'error');
+    } finally {
+        loading.style.display = 'none';
+        uploadBtn.disabled = false;
+    }
+}
 
         function setStatus(message, type = '') {
             const status = document.getElementById('status');
