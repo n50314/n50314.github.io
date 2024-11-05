@@ -154,16 +154,19 @@
 
                 const reader = new FileReader();
                 reader.onload = function (e) {
+                    // 清除預覽
                     while (previewArea.firstChild) {
                         previewArea.removeChild(previewArea.firstChild);
                     }
 
+                    // 設置預覽圖片
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     previewArea.appendChild(img);
 
+                    // 設置 base64 數據 - 確保移除 data:image/jpeg;base64, 前綴
                     imageBase64 = e.target.result.split(',')[1];
-                    console.log("Base64 轉換完成，長度:", imageBase64.length);
+                    console.log("Base64 數據已準備，長度:", imageBase64.length);
 
                     fileInfo.textContent = `檔案名稱: ${file.name}, 大小: ${(file.size / 1024).toFixed(2)}KB`;
                     uploadBtn.disabled = false;
@@ -171,7 +174,6 @@
                 reader.readAsDataURL(file);
             }
         });
-
         async function uploadImage() {
             if (!imageBase64) {
                 setStatus('請先選擇圖片', 'error');
@@ -191,23 +193,29 @@
             uploadBtn.disabled = true;
 
             try {
-                // 1. 首先上傳圖片到 S3
-                const s3Response = await fetch(params.uploadUrl, {
+                // 確保 imageBase64 和 bytes 的轉換是正確的
+                console.log("Base64 長度:", imageBase64.length);
+
+                // 直接使用 fetch 和 base64 數據
+                const response = await fetch(params.uploadUrl, {
                     method: 'PUT',
-                    body: bytes,
                     headers: {
-                        'Content-Type': 'image/jpeg'
-                    }
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    // 直接使用 base64 解碼後的數據
+                    body: Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0)).buffer
                 });
 
-                if (!s3Response.ok) {
-                    throw new Error(`S3上傳失敗: ${s3Response.status}`);
+                console.log("上傳響應狀態:", response.status);
+
+                if (!response.ok) {
+                    throw new Error(`上傳失敗: ${response.status}`);
                 }
 
-                console.log("S3上傳成功，開始更新交易...");
-                console.log("更新交易ID:", params.depositId);
+                console.log("S3上傳成功");
+                setStatus('圖片上傳成功，正在更新交易...', '');
 
-                // 2. 更新交易記錄
+                // 更新交易記錄
                 const updateResponse = await fetch(`/p/deposits/${params.depositId}`, {
                     method: 'PUT',
                     headers: {
@@ -215,13 +223,10 @@
                         'Authorization': `Bearer ${params.accessToken}`
                     },
                     body: JSON.stringify({
-                        id: params.depositId,  // 使用從URL參數中獲取的ID
+                        id: params.depositId,
                         certificate_file_path: params.certificatePath
                     })
                 });
-
-                const updateResult = await updateResponse.json();
-                console.log("更新交易結果:", updateResult);
 
                 if (!updateResponse.ok) {
                     throw new Error(`更新交易失敗: ${updateResponse.status}`);
