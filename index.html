@@ -136,6 +136,19 @@
         const loading = document.getElementById('loading');
         const status = document.getElementById('status');
 
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                uploadUrl: decodeURIComponent(urlParams.get('uploadUrl')),
+                certificatePath: decodeURIComponent(urlParams.get('certificatePath')),
+                depositId: decodeURIComponent(urlParams.get('depositId')),
+                accessToken: decodeURIComponent(urlParams.get('accessToken'))
+            };
+        }
+
+        // 當需要使用這些參數時，可以這樣調用：
+        const params = getUrlParams();
+
         function getUploadUrl() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -185,56 +198,56 @@
         });
 
         async function uploadImage() {
-    try {
-        setStatus('準備上傳...', '');
-        loading.style.display = 'block';
-        uploadBtn.disabled = true;
+            try {
+                setStatus('準備上傳...', '');
+                loading.style.display = 'block';
+                uploadBtn.disabled = true;
 
-        // 取得並解析上傳 URL
-        const uploadUrl = decodeURIComponent(getUploadUrl());
-        console.log("解析後的上傳 URL:", uploadUrl);
+                // 取得並解析上傳 URL
+                const uploadUrl = decodeURIComponent(getUploadUrl());
+                console.log("解析後的上傳 URL:", uploadUrl);
 
-        // 轉換 base64 為 Blob
-        const byteCharacters = atob(imageBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                // 轉換 base64 為 Blob
+                const byteCharacters = atob(imageBase64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+                // 使用 FormData
+                const formData = new FormData();
+                formData.append('file', blob, 'image.jpg');
+
+                // 發送請求
+                const response = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: blob,
+                    headers: {
+                        'Content-Type': 'image/jpeg',
+                        'Cache-Control': 'no-cache',
+                    },
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+
+                if (response.ok) {
+                    console.log('上傳成功');
+                    setStatus('上傳成功！', 'success');
+                    setTimeout(() => window.close(), 1000);
+                } else {
+                    throw new Error(`上傳失敗: ${response.status} ${response.statusText}`);
+                }
+
+            } catch (error) {
+                console.error('上傳錯誤:', error);
+                setStatus('上傳失敗: ' + error.message, 'error');
+            } finally {
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/jpeg' });
-
-        // 使用 FormData
-        const formData = new FormData();
-        formData.append('file', blob, 'image.jpg');
-
-        // 發送請求
-        const response = await fetch(uploadUrl, {
-            method: 'PUT',
-            body: blob,
-            headers: {
-                'Content-Type': 'image/jpeg',
-                'Cache-Control': 'no-cache',
-            },
-            mode: 'cors',  // 明確指定 CORS 模式
-            credentials: 'omit'  // 不發送認證信息
-        });
-
-        if (response.ok) {
-            console.log('上傳成功');
-            setStatus('上傳成功！', 'success');
-            setTimeout(() => window.close(), 1000);
-        } else {
-            throw new Error(`上傳失敗: ${response.status} ${response.statusText}`);
-        }
-
-    } catch (error) {
-        console.error('上傳錯誤:', error);
-        setStatus('上傳失敗: ' + error.message, 'error');
-    } finally {
-        loading.style.display = 'none';
-        uploadBtn.disabled = false;
-    }
-}
 
         function setStatus(message, type = '') {
             const status = document.getElementById('status');
