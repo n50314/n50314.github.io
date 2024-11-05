@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,16 +11,14 @@
             padding: 20px;
             background-color: #f5f5f5;
         }
-
         .upload-container {
             max-width: 500px;
             margin: 0 auto;
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
         .preview-area {
             width: 100%;
             height: 200px;
@@ -35,19 +32,16 @@
             position: relative;
             overflow: hidden;
         }
-
         .preview-area img {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
         }
-
         .buttons {
             display: flex;
             gap: 10px;
             margin-top: 20px;
         }
-
         button {
             padding: 10px 20px;
             background-color: #4CAF50;
@@ -57,34 +51,28 @@
             cursor: pointer;
             flex: 1;
         }
-
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
         }
-
         #status {
             margin-top: 10px;
             padding: 10px;
             border-radius: 4px;
         }
-
         .success {
             background-color: #dff0d8;
             color: #3c763d;
         }
-
         .error {
             background-color: #f2dede;
             color: #a94442;
         }
-
         .loading {
             display: none;
             text-align: center;
             margin: 10px 0;
         }
-
         .loading:after {
             content: '';
             display: inline-block;
@@ -95,31 +83,24 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-
 <body>
     <div class="upload-container">
         <div class="preview-area" id="previewArea" onclick="document.getElementById('fileInput').click()">
             <div id="previewText">點擊選擇圖片</div>
         </div>
-
+        
         <input type="file" id="fileInput" accept="image/*" style="display: none">
-
+        
         <div id="fileInfo"></div>
         <div id="loading" class="loading"></div>
         <div id="status"></div>
-
+        
         <div class="buttons">
             <button onclick="document.getElementById('fileInput').click()">選擇圖片</button>
             <button id="uploadBtn" onclick="uploadImage()" disabled>上傳圖片</button>
@@ -146,41 +127,25 @@
             };
         }
 
-        // 當需要使用這些參數時，可以這樣調用：
-        const params = getUrlParams();
-
-        function getUploadUrl() {
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const uploadUrl = decodeURIComponent(urlParams.get('uploadUrl'));
-                if (!uploadUrl) {
-                    throw new Error('URL 參數中沒有 uploadUrl');
-                }
-                // 驗證 URL 格式
-                new URL(uploadUrl);
-                return uploadUrl;
-            } catch (error) {
-                console.error('取得上傳 URL 時發生錯誤:', error);
-                return null;
-            }
-        }
-
-        fileInput.addEventListener('change', function (e) {
+        // 檔案選擇處理
+        fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
+                console.log("選擇的檔案:", file.name, "大小:", file.size);
+                
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    // 清除之前的預覽
+                reader.onload = function(e) {
                     while (previewArea.firstChild) {
                         previewArea.removeChild(previewArea.firstChild);
                     }
-
-                    // 創建並添加新的預覽圖片
+                    
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     previewArea.appendChild(img);
-
+                    
                     imageBase64 = e.target.result.split(',')[1];
+                    console.log("Base64 轉換完成，長度:", imageBase64.length);
+                    
                     fileInfo.textContent = `檔案名稱: ${file.name}, 大小: ${(file.size / 1024).toFixed(2)}KB`;
                     uploadBtn.disabled = false;
                 };
@@ -188,61 +153,70 @@
             }
         });
 
-        window.addEventListener('beforeunload', function (e) {
-            if (loading.style.display === 'block') {
-                // 如果正在上傳中，提示用戶
-                e.preventDefault();
-                e.returnValue = '上傳正在進行中，確定要離開嗎？';
-                return e.returnValue;
-            }
-        });
-
         async function uploadImage() {
+            if (!imageBase64) {
+                setStatus('請先選擇圖片', 'error');
+                return;
+            }
+
+            const params = getUrlParams();
+            console.log("獲取的參數:", params);
+
+            if (!params.uploadUrl || !params.certificatePath || !params.depositId || !params.accessToken) {
+                setStatus('缺少必要參數', 'error');
+                return;
+            }
+
+            setStatus('開始上傳...', '');
+            loading.style.display = 'block';
+            uploadBtn.disabled = true;
+
             try {
-                setStatus('準備上傳...', '');
-                loading.style.display = 'block';
-                uploadBtn.disabled = true;
-
-                // 取得並解析上傳 URL
-                const uploadUrl = decodeURIComponent(getUploadUrl());
-                console.log("解析後的上傳 URL:", uploadUrl);
-
-                // 轉換 base64 為 Blob
-                const byteCharacters = atob(imageBase64);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                // 1. 首先上傳圖片到 S3
+                console.log("開始上傳圖片到 S3...");
+                const binaryString = atob(imageBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
                 }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'image/jpeg' });
 
-                // 使用 FormData
-                const formData = new FormData();
-                formData.append('file', blob, 'image.jpg');
-
-                // 發送請求
-                const response = await fetch(uploadUrl, {
+                const s3Response = await fetch(params.uploadUrl, {
                     method: 'PUT',
-                    body: blob,
+                    body: bytes,
                     headers: {
-                        'Content-Type': 'image/jpeg',
-                        'Cache-Control': 'no-cache',
-                    },
-                    mode: 'cors',
-                    credentials: 'omit'
+                        'Content-Type': 'image/jpeg'
+                    }
                 });
 
-                if (response.ok) {
-                    console.log('上傳成功');
-                    setStatus('上傳成功！', 'success');
-                    setTimeout(() => window.close(), 1000);
-                } else {
-                    throw new Error(`上傳失敗: ${response.status} ${response.statusText}`);
+                if (!s3Response.ok) {
+                    throw new Error(`S3上傳失敗: ${s3Response.status}`);
                 }
 
+                console.log("S3上傳成功，開始更新交易...");
+
+                // 2. 然後更新交易記錄
+                const updateResponse = await fetch(`/p/deposits/${params.depositId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${params.accessToken}`
+                    },
+                    body: JSON.stringify({
+                        certificate_file_path: params.certificatePath,
+                        id: params.depositId
+                    })
+                });
+
+                if (!updateResponse.ok) {
+                    throw new Error(`更新交易失敗: ${updateResponse.status}`);
+                }
+
+                console.log("交易更新成功");
+                setStatus('上傳成功！', 'success');
+
             } catch (error) {
-                console.error('上傳錯誤:', error);
-                setStatus('上傳失敗: ' + error.message, 'error');
+                console.error('上傳過程發生錯誤:', error);
+                setStatus(`上傳失敗: ${error.message}`, 'error');
             } finally {
                 loading.style.display = 'none';
                 uploadBtn.disabled = false;
@@ -250,15 +224,16 @@
         }
 
         function setStatus(message, type = '') {
-            const status = document.getElementById('status');
-            if (status) {
-                status.textContent = message;
-                status.className = type; // 'error', 'success' 或空
-            }
-            console.log(`狀態更新: ${message} (${type})`);
+            status.textContent = message;
+            status.className = type;
+            console.log(`狀態：${message}`);
         }
 
+        // 頁面加載完成後輸出參數
+        window.onload = function() {
+            const params = getUrlParams();
+            console.log("頁面載入完成，參數：", params);
+        };
     </script>
 </body>
-
 </html>
