@@ -136,7 +136,7 @@
         const fileInfo = document.getElementById('fileInfo');
         const loading = document.getElementById('loading');
         const status = document.getElementById('status');
-    
+
         // 從 URL 取得參數
         function getUrlParams() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -144,98 +144,99 @@
                 uploadUrl: urlParams.get('uploadUrl'),
                 certificatePath: urlParams.get('certificatePath'),
                 depositId: urlParams.get('depositId'),
-                accessToken: urlParams.get('accessToken')
+                accessToken: urlParams.get('accessToken'),
+                baseUrl: decodeURIComponent(urlParams.get('baseUrl'))
             };
-    
+
             // 解碼所有參數
             Object.keys(params).forEach(key => {
                 if (params[key]) {
                     params[key] = decodeURIComponent(params[key]);
                 }
             });
-    
+
             console.log("獲取到的URL參數:", params);
             return params;
         }
-    
+
         // 設置狀態訊息
         function setStatus(message, type = '') {
             status.textContent = message;
             status.className = type;
             console.log(`狀態：${message} (${type})`);
         }
-    
+
         // 檔案選擇事件處理
-        fileInput.addEventListener('change', function(e) {
+        fileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (file) {
                 console.log("選擇的檔案:", file.name, "大小:", file.size);
-                
+
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     // 清除預覽
                     while (previewArea.firstChild) {
                         previewArea.removeChild(previewArea.firstChild);
                     }
-                    
+
                     // 設置預覽圖片
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     previewArea.appendChild(img);
-                    
+
                     // 設置 base64 數據
                     imageBase64 = e.target.result.split(',')[1];
                     console.log("Base64 數據已準備，長度:", imageBase64.length);
-                    
+
                     fileInfo.textContent = `檔案名稱: ${file.name}, 大小: ${(file.size / 1024).toFixed(2)}KB`;
                     uploadBtn.disabled = false;
                 };
                 reader.readAsDataURL(file);
             }
         });
-    
+
         // 上傳圖片
         async function uploadImage() {
             if (!imageBase64) {
                 setStatus('請先選擇圖片', 'error');
                 return;
             }
-    
+
             const params = getUrlParams();
             if (!params.uploadUrl || !params.certificatePath || !params.depositId || !params.accessToken) {
                 setStatus('缺少必要參數', 'error');
                 return;
             }
-    
+
             try {
                 setStatus('開始上傳...', '');
                 loading.style.display = 'block';
                 uploadBtn.disabled = true;
-    
+
                 // 轉換 base64 為二進制數據
                 let binaryData;
                 try {
                     const byteCharacters = atob(imageBase64);
                     const byteArrays = [];
-                    
+
                     for (let offset = 0; offset < byteCharacters.length; offset += 512) {
                         const slice = byteCharacters.slice(offset, offset + 512);
                         const byteNumbers = new Array(slice.length);
-                        
+
                         for (let i = 0; i < slice.length; i++) {
                             byteNumbers[i] = slice.charCodeAt(i);
                         }
-                        
+
                         byteArrays.push(new Uint8Array(byteNumbers));
                     }
-                    
-                    binaryData = new Blob(byteArrays, {type: 'image/jpeg'});
+
+                    binaryData = new Blob(byteArrays, { type: 'image/jpeg' });
                     console.log("二進制數據已準備:", binaryData.size, "bytes");
                 } catch (e) {
                     console.error("轉換 base64 失敗:", e);
                     throw new Error("圖片數據處理失敗");
                 }
-    
+
                 // 上傳到 S3
                 console.log("開始上傳到 S3...");
                 const response = await fetch(params.uploadUrl, {
@@ -245,17 +246,17 @@
                     },
                     body: binaryData
                 });
-    
+
                 if (!response.ok) {
                     throw new Error(`S3上傳失敗: ${response.status}`);
                 }
-    
+
                 console.log("S3 上傳成功，準備更新交易記錄...");
-    
+
                 // 更新交易記錄
-                const updateUrl = `/p/deposits/${params.depositId}`;
+                const updateUrl = `${params.baseUrl}/p/deposits/${params.depositId}`;
                 console.log("更新交易 URL:", updateUrl);
-    
+
                 const updateResponse = await fetch(updateUrl, {
                     method: 'PUT',
                     headers: {
@@ -267,14 +268,14 @@
                         certificate_file_path: params.certificatePath
                     })
                 });
-    
+
                 if (!updateResponse.ok) {
                     throw new Error(`更新交易失敗: ${updateResponse.status}`);
                 }
-    
+
                 console.log("交易更新成功");
                 setStatus('上傳成功！', 'success');
-    
+
             } catch (error) {
                 console.error('上傳過程發生錯誤:', error);
                 setStatus(`上傳失敗: ${error.message}`, 'error');
@@ -283,9 +284,9 @@
                 uploadBtn.disabled = false;
             }
         }
-    
+
         // 頁面載入完成時執行
-        window.onload = function() {
+        window.onload = function () {
             const params = getUrlParams();
             console.log("頁面載入完成，參數：", params);
         };
