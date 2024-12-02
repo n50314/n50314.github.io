@@ -1,269 +1,253 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Image</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-        }
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Upload Image</title>
+   <style>
+       body {
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           height: 100vh;
+           margin: 0;
+           background-color: #f0f0f0;
+           font-family: Arial, sans-serif;
+       }
 
-        .upload-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 400px;
-        }
+       .upload-container {
+           background: white;
+           padding: 20px;
+           border-radius: 8px;
+           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+           width: 90%;
+           max-width: 400px;
+       }
 
-        .preview-area {
-            border: 2px dashed #ccc;
-            border-radius: 4px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            cursor: pointer;
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
+       .preview-area {
+           border: 2px dashed #ccc;
+           border-radius: 4px;
+           padding: 20px;
+           text-align: center;
+           margin-bottom: 20px;
+           cursor: pointer;
+           min-height: 200px;
+           display: flex;
+           align-items: center;
+           justify-content: center;
+           position: relative;
+       }
 
-        .preview-area img {
-            max-width: 100%;
-            max-height: 200px;
-        }
+       .preview-area img {
+           max-width: 100%;
+           max-height: 200px;
+       }
 
-        .preview-area:hover {
-            border-color: #666;
-        }
+       .preview-area:hover {
+           border-color: #666;
+       }
 
-        .buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
+       .buttons {
+           display: flex;
+           gap: 10px;
+           margin-top: 20px;
+       }
 
-        .buttons button {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            background-color: #4CAF50;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-        }
+       button {
+           flex: 1;
+           padding: 10px;
+           border: none;
+           border-radius: 4px;
+           background-color: #4CAF50;
+           color: white;
+           cursor: pointer;
+       }
 
-        .buttons button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
+       button:disabled {
+           background-color: #ccc;
+           cursor: not-allowed;
+       }
 
-        .buttons button:hover:not(:disabled) {
-            background-color: #45a049;
-        }
+       button:not(:disabled):hover {
+           background-color: #45a049;
+       }
 
-        #fileInfo {
-            margin-top: 10px;
-            color: #666;
-        }
+       #fileInfo {
+           margin-top: 10px;
+           color: #666;
+       }
 
-        .loading {
-            display: none;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
+       .loading {
+           display: none;
+           width: 40px;
+           height: 40px;
+           border: 4px solid #f3f3f3;
+           border-top: 4px solid #3498db;
+           border-radius: 50%;
+           animation: spin 1s linear infinite;
+           margin: 20px auto;
+       }
 
-        #status {
-            margin-top: 10px;
-            text-align: center;
-            color: #666;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        #countdown {
-            color: #666;
-            font-size: 14px;
-        }
-    </style>
+       @keyframes spin {
+           0% { transform: rotate(0deg); }
+           100% { transform: rotate(360deg); }
+       }
+   </style>
 </head>
 <body>
-    <div class="upload-container">
-        <div id="previewArea" class="preview-area" onclick="document.getElementById('fileInput').click()">
-            <div id="previewText">Click to Select Image</div>
-        </div>
+   <div class="upload-container">
+       <div id="previewArea" class="preview-area" onclick="document.getElementById('fileInput').click()">
+           <div id="previewText">Click to Select Image</div>
+       </div>
 
-        <div id="fileInfo"></div>
+       <div id="fileInfo"></div>
 
-        <div id="loading" class="loading"></div>
+       <div id="loading" class="loading"></div>
 
-        <div id="status"></div>
+       <div id="status"></div>
 
-        <div class="buttons">
-            <button onclick="document.getElementById('fileInput').click()">Select Image</button>
-            <button id="uploadBtn" disabled>Upload Image</button>
-        </div>
+       <div class="buttons">
+           <button onclick="document.getElementById('fileInput').click()">Select Image</button>
+           <button id="uploadBtn" disabled>Upload Image</button>
+       </div>
 
-        <div id="countdown" style="display: none; text-align: center; margin-top: 10px;">
-            Auto closing window in <span id="timer">3</span> seconds
-        </div>
-    </div>
+       <div id="countdown" style="display: none; text-align: center; margin-top: 10px;">
+           Auto closing window in <span id="timer">3</span> seconds
+       </div>
+   </div>
 
-    <input type="file" id="fileInput" accept="image/*" style="display: none">
+   <input type="file" id="fileInput" accept="image/*" style="display: none">
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const uploadUrl = urlParams.get('uploadUrl');
-        const certificatePath = urlParams.get('certificatePath');
-        const depositId = urlParams.get('depositId');
-        const accessToken = urlParams.get('accessToken');
-        const baseUrl = urlParams.get('baseUrl');
+   <script>
+       const urlParams = new URLSearchParams(window.location.search);
+       const uploadUrl = urlParams.get('uploadUrl');
+       const certificatePath = urlParams.get('certificatePath');
+       const depositId = urlParams.get('depositId');
+       const accessToken = urlParams.get('accessToken');
+       const baseUrl = urlParams.get('baseUrl');
 
-        const fileInput = document.getElementById('fileInput');
-        const previewArea = document.getElementById('previewArea');
-        const previewText = document.getElementById('previewText');
-        const fileInfo = document.getElementById('fileInfo');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const loading = document.getElementById('loading');
-        const status = document.getElementById('status');
+       const fileInput = document.getElementById('fileInput');
+       const previewArea = document.getElementById('previewArea');
+       const previewText = document.getElementById('previewText');
+       const fileInfo = document.getElementById('fileInfo');
+       const uploadBtn = document.getElementById('uploadBtn');
+       const loading = document.getElementById('loading');
+       const status = document.getElementById('status');
 
-        fileInput.addEventListener('change', handleFileSelect);
-        uploadBtn.addEventListener('click', handleUpload);
+       let hasImage = false;
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    previewText.style.display = 'none';
-                    previewArea.appendChild(img);
-                    fileInfo.textContent = `File name: ${file.name}, Size: ${formatFileSize(file.size)}`;
-                    uploadBtn.disabled = false;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+       fileInput.addEventListener('change', handleFileSelect);
+       uploadBtn.addEventListener('click', handleUpload);
 
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
+       function handleFileSelect(event) {
+           const file = event.target.files[0];
+           if (file) {
+               const reader = new FileReader();
+               reader.onload = function(e) {
+                   if (hasImage) {
+                       previewArea.querySelector('img').src = e.target.result;
+                   } else {
+                       const img = document.createElement('img');
+                       img.src = e.target.result;
+                       previewText.style.display = 'none';
+                       previewArea.appendChild(img);
+                       hasImage = true;
+                   }
+                   fileInfo.textContent = `File name: ${file.name}`;
+                   uploadBtn.disabled = false;
+               };
+               reader.readAsDataURL(file);
+           }
+       }
 
-        async function handleUpload() {
-            const file = fileInput.files[0];
-            if (!file) {
-                status.textContent = 'Please select a file first';
-                return;
-            }
+       async function handleUpload() {
+           const file = fileInput.files[0];
+           if (!file) return;
 
-            uploadBtn.disabled = true;
-            loading.style.display = 'block';
-            status.textContent = 'Uploading...';
+           uploadBtn.disabled = true;
+           loading.style.display = 'block';
+           status.textContent = 'Uploading...';
 
-            try {
-                const response = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    body: file,
-                    headers: {
-                        'Content-Type': file.type
-                    }
-                });
+           try {
+               const response = await fetch(uploadUrl, {
+                   method: 'PUT',
+                   body: file,
+                   headers: {
+                       'Content-Type': file.type
+                   }
+               });
 
-                if (response.ok) {
-                    const updateResponse = await fetch(`${baseUrl}/p/deposits/${depositId}/certificates`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${accessToken}`
-                        },
-                        body: JSON.stringify({
-                            path: certificatePath
-                        })
-                    });
+               if (response.ok) {
+                   const updateResponse = await fetch(`${baseUrl}/p/deposits/${depositId}/certificates`, {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json',
+                           'Authorization': `Bearer ${accessToken}`
+                       },
+                       body: JSON.stringify({
+                           path: certificatePath
+                       })
+                   });
 
-                    if (updateResponse.ok) {
-                        status.textContent = 'Upload Successful';
-                        startCountdown();
-                    } else {
-                        throw new Error('Failed to update certificate information');
-                    }
-                } else {
-                    throw new Error('Upload failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                status.textContent = 'Upload failed: ' + error.message;
-                uploadBtn.disabled = false;
-            } finally {
-                loading.style.display = 'none';
-            }
-        }
+                   if (updateResponse.ok) {
+                       status.textContent = 'Upload Successful';
+                       startCountdown();
+                   } else {
+                       throw new Error('Failed to update certificate information');
+                   }
+               } else {
+                   throw new Error('Upload failed');
+               }
+           } catch (error) {
+               console.error('Error:', error);
+               status.textContent = 'Upload failed: ' + error.message;
+               uploadBtn.disabled = false;
+           } finally {
+               loading.style.display = 'none';
+           }
+       }
 
-        function startCountdown() {
-            const countdownElement = document.getElementById('countdown');
-            const timerElement = document.getElementById('timer');
-            let count = 3;
-            
-            countdownElement.style.display = 'block';
-            
-            const timer = setInterval(() => {
-                count--;
-                timerElement.textContent = count;
-                
-                if (count <= 0) {
-                    clearInterval(timer);
-                    window.close();
-                }
-            }, 1000);
-        }
+       function startCountdown() {
+           const countdownElement = document.getElementById('countdown');
+           const timerElement = document.getElementById('timer');
+           let count = 3;
+           
+           countdownElement.style.display = 'block';
+           
+           const timer = setInterval(() => {
+               count--;
+               timerElement.textContent = count;
+               
+               if (count <= 0) {
+                   clearInterval(timer);
+                   window.close();
+               }
+           }, 1000);
+       }
 
-        // Drag and drop support
-        previewArea.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '#666';
-        });
+       // Drag and drop support
+       previewArea.addEventListener('dragover', (e) => {
+           e.preventDefault();
+           previewArea.style.borderColor = '#666';
+       });
 
-        previewArea.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '#ccc';
-        });
+       previewArea.addEventListener('dragleave', (e) => {
+           e.preventDefault();
+           previewArea.style.borderColor = '#ccc';
+       });
 
-        previewArea.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.style.borderColor = '#ccc';
-            
-            const dt = e.dataTransfer;
-            const file = dt.files[0];
-            
-            if (file && file.type.startsWith('image/')) {
-                fileInput.files = dt.files;
-                handleFileSelect({target: {files: dt.files}});
-            }
-        });
-    </script>
+       previewArea.addEventListener('drop', (e) => {
+           e.preventDefault();
+           previewArea.style.borderColor = '#ccc';
+           
+           const dt = e.dataTransfer;
+           const files = dt.files;
+
+           if (files.length) {
+               fileInput.files = files;
+               handleFileSelect({ target: { files } });
+           }
+       });
+   </script>
 </body>
 </html>
