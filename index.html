@@ -161,51 +161,65 @@
        }
 
        async function handleUpload() {
-           const file = fileInput.files[0];
-           if (!file) return;
+    const file = fileInput.files[0];
+    if (!file) return;
 
-           uploadBtn.disabled = true;
-           loading.style.display = 'block';
-           status.textContent = 'Uploading...';
+    uploadBtn.disabled = true;
+    loading.style.display = 'block';
+    status.textContent = 'Uploading...';
 
-           try {
-               const response = await fetch(uploadUrl, {
-                   method: 'PUT',
-                   body: file,
-                   headers: {
-                       'Content-Type': file.type
-                   }
-               });
+    try {
+        console.log('Starting upload to:', uploadUrl);
+        const response = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: {
+                'Content-Type': file.type
+            }
+        });
 
-               if (response.ok) {
-                   const updateResponse = await fetch(`${baseUrl}/p/deposits/${depositId}/certificates`, {
-                       method: 'POST',
-                       headers: {
-                           'Content-Type': 'application/json',
-                           'Authorization': `Bearer ${accessToken}`
-                       },
-                       body: JSON.stringify({
-                           path: certificatePath
-                       })
-                   });
+        if (response.ok) {
+            console.log('File uploaded successfully, updating certificate info');
+            console.log('Base URL:', baseUrl);
+            console.log('Deposit ID:', depositId);
+            console.log('Certificate Path:', certificatePath);
 
-                   if (updateResponse.ok) {
-                       status.textContent = 'Upload Successful';
-                       startCountdown();
-                   } else {
-                       throw new Error('Failed to update certificate information');
-                   }
-               } else {
-                   throw new Error('Upload failed');
-               }
-           } catch (error) {
-               console.error('Error:', error);
-               status.textContent = 'Upload failed: ' + error.message;
-               uploadBtn.disabled = false;
-           } finally {
-               loading.style.display = 'none';
-           }
-       }
+            const certificateUrl = `${baseUrl}/p/deposits/${depositId}/certificates`;
+            console.log('Certificate update URL:', certificateUrl);
+
+            const updateResponse = await fetch(certificateUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    path: certificatePath
+                })
+            });
+
+            if (updateResponse.ok) {
+                status.textContent = 'Upload Successful';
+                startCountdown();
+            } else {
+                const errorText = await updateResponse.text();
+                console.error('Update failed:', updateResponse.status, errorText);
+                throw new Error('Failed to update certificate information');
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('Upload failed:', response.status, errorText);
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        status.textContent = error.message;
+        uploadBtn.disabled = false;
+    } finally {
+        loading.style.display = 'none';
+    }
+}
 
        function startCountdown() {
            const countdownElement = document.getElementById('countdown');
