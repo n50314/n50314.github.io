@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -36,16 +35,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
         }
 
         .preview-area img {
             max-width: 100%;
             max-height: 200px;
-        }
-
-        .preview-area:hover {
-            border-color: #666;
         }
 
         .buttons {
@@ -67,15 +61,6 @@
         button:disabled {
             background-color: #ccc;
             cursor: not-allowed;
-        }
-
-        button:not(:disabled):hover {
-            background-color: #45a049;
-        }
-
-        #fileInfo {
-            margin-top: 10px;
-            color: #666;
         }
 
         .loading {
@@ -102,7 +87,6 @@
         }
     </style>
 </head>
-
 <body>
     <div class="upload-container">
         <div id="previewArea" class="preview-area" onclick="document.getElementById('fileInput').click()">
@@ -128,166 +112,20 @@
     <input type="file" id="fileInput" accept="image/*" style="display: none">
 
     <script>
-        // 全局變量
-        let imageBase64 = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const uploadUrl = urlParams.get('uploadUrl');
+        const certificatePath = urlParams.get('certificatePath');
+        const depositId = urlParams.get('depositId');
+        const accessToken = urlParams.get('accessToken');
+        const baseUrl = urlParams.get('baseUrl');
+
         const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
         const previewArea = document.getElementById('previewArea');
         const previewText = document.getElementById('previewText');
         const fileInfo = document.getElementById('fileInfo');
+        const uploadBtn = document.getElementById('uploadBtn');
         const loading = document.getElementById('loading');
         const status = document.getElementById('status');
-
-        // 從 URL 取得參數
-        function getUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const params = {
-                uploadUrl: urlParams.get('uploadUrl'),
-                certificatePath: urlParams.get('certificatePath'),
-                depositId: urlParams.get('depositId'),
-                accessToken: urlParams.get('accessToken'),
-                baseUrl: urlParams.get('baseUrl')
-            };
-
-            // 解碼所有參數
-            Object.keys(params).forEach(key => {
-                if (params[key]) {
-                    params[key] = decodeURIComponent(params[key]);
-                }
-            });
-
-            // 輸出參數以便調試
-            console.log("獲取到的URL參數:", params);
-            return params;
-        }
-
-        // 設置狀態訊息
-        function setStatus(message, type = '') {
-            status.textContent = message;
-            status.className = type;
-            console.log(`狀態：${message} (${type})`);
-        }
-
-        // 檔案選擇事件處理
-        fileInput.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (file) {
-                console.log("選擇的檔案:", file.name, "大小:", file.size);
-
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    // 清除預覽
-                    while (previewArea.firstChild) {
-                        previewArea.removeChild(previewArea.firstChild);
-                    }
-
-                    // 設置預覽圖片
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    previewArea.appendChild(img);
-
-                    // 設置 base64 數據
-                    imageBase64 = e.target.result.split(',')[1];
-                    console.log("Base64 數據已準備，長度:", imageBase64.length);
-
-                    fileInfo.textContent = `檔案名稱: ${file.name}, 大小: ${(file.size / 1024).toFixed(2)}KB`;
-                    uploadBtn.disabled = false;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // 上傳圖片
-        async function uploadImage() {
-            if (!imageBase64) {
-                setStatus('請先選擇圖片', 'error');
-                return;
-            }
-
-            const params = getUrlParams();
-            console.log("獲取到的參數:", params);
-
-            if (!params.uploadUrl || !params.depositId || !params.accessToken || !params.baseUrl) {
-                setStatus('缺少必要參數', 'error');
-                console.error('缺少參數:', params);
-                return;
-            }
-
-            try {
-                setStatus('開始上傳...', '');
-                loading.style.display = 'block';
-                uploadBtn.disabled = true;
-
-                // 轉換 base64 為二進制數據
-                let binaryData;
-                try {
-                    const byteCharacters = atob(imageBase64);
-                    const bytes = new Uint8Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        bytes[i] = byteCharacters.charCodeAt(i);
-                    }
-                    binaryData = bytes.buffer;
-                    console.log("二進制數據已準備:", bytes.length, "bytes");
-                } catch (e) {
-                    console.error("轉換 base64 失敗:", e);
-                    throw new Error("圖片數據處理失敗");
-                }
-
-                // 上傳到 S3
-                console.log("開始上傳到 S3...");
-                const uploadResponse = await fetch(params.uploadUrl, {
-                    method: 'PUT',
-                    body: binaryData
-                });
-
-                if (!uploadResponse.ok) {
-                    throw new Error(`S3上傳失敗: ${uploadResponse.status}`);
-                }
-
-                console.log("S3 上傳成功，準備更新交易紀錄...");
-
-                // 更新交易記錄
-                const updateUrl = `${params.baseUrl}/p/deposits/${params.depositId}`;
-                console.log("更新交易 URL:", updateUrl);
-
-                const updateResponse = await fetch(updateUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${params.accessToken}`
-                    },
-                    body: JSON.stringify({
-                        id: params.depositId,
-                        certificate_file_path: params.certificatePath
-                    })
-                });
-
-                if (!updateResponse.ok) {
-                    throw new Error(`更新交易失敗: ${updateResponse.status}`);
-                }
-
-                console.log("交易更新成功");
-                setStatus('上傳成功！', 'success');
-
-                setTimeout(() => {
-                    window.close();
-                }, 2000);
-
-            } catch (error) {
-                console.error('上傳過程發生錯誤:', error);
-                setStatus(`上傳失敗: ${error.message}`, 'error');
-            } finally {
-                loading.style.display = 'none';
-                uploadBtn.disabled = false;
-            }
-        }
-
-        // 頁面載入完成時執行
-        window.onload = function () {
-            const params = getUrlParams();
-            console.log("頁面載入完成，參數：", params);
-        };
 
         function startCountdown() {
             const countdownElement = document.getElementById('countdown');
@@ -307,12 +145,71 @@
             }, 1000);
         }
 
-        // 在成功上傳後調用
-        if (updateResponse.ok) {
-            status.textContent = 'Upload Successful';
-            startCountdown();
-        }
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    previewText.style.display = 'none';
+                    if (previewArea.querySelector('img')) {
+                        previewArea.querySelector('img').remove();
+                    }
+                    previewArea.appendChild(img);
+                    fileInfo.textContent = `File name: ${file.name}`;
+                    uploadBtn.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        uploadBtn.addEventListener('click', async function() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            uploadBtn.disabled = true;
+            loading.style.display = 'block';
+            status.textContent = 'Uploading...';
+
+            try {
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: file,
+                    headers: {
+                        'Content-Type': file.type
+                    }
+                });
+
+                if (uploadResponse.ok) {
+                    const certResponse = await fetch(`${baseUrl}/p/deposits/${depositId}/certificates`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify({
+                            path: certificatePath
+                        })
+                    });
+
+                    if (certResponse.ok) {
+                        status.textContent = 'Upload Successful';
+                        startCountdown();
+                    } else {
+                        throw new Error('Failed to update certificate information');
+                    }
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = `Upload failed: ${error.message}`;
+                uploadBtn.disabled = false;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
     </script>
 </body>
-
 </html>
